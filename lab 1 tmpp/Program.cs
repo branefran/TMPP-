@@ -23,6 +23,8 @@ class RestaurantAdmin
         return _instance;
     }
 
+    public bool IsAlcoholic { get; private set; }
+
     public bool IsOpen(int hour)
     {
         return hour >= 9 && hour < 23;
@@ -42,13 +44,22 @@ class RestaurantAdmin
     {
         Console.WriteLine("Здравствуйте! Добро пожаловать в наш ресторан.");
     }
+
+    public void AskForAlcoholPreference()
+    {
+        Console.Write("Вы пьете алкоголь? (да/нет): ");
+        string response = Console.ReadLine().ToLower();
+        IsAlcoholic = response == "да";
+    }
 }
 
-// 2. Abstract Factory – Кухни
+// 2. Абстрактная фабрика (Abstract Factory) – Кухни (AmericanKitchen, ItalianKitchen)
 interface IKitchen
 {
     IBurger CreateBurger(int choice);
     IPasta CreatePasta(int choice);
+    string GetMealDrink();
+    string GetAlcoholDrink();  // Добавляем метод для обоих типов кухни
 }
 
 class AmericanKitchen : IKitchen
@@ -64,6 +75,16 @@ class AmericanKitchen : IKitchen
     }
 
     public IPasta CreatePasta(int choice) => null;
+
+    public string GetMealDrink()
+    {
+        return "Кола"; // Стандартный напиток для американской кухни
+    }
+
+    public string GetAlcoholDrink()
+    {
+        return "Пиво"; // Алкогольный напиток для американской кухни
+    }
 }
 
 class ItalianKitchen : IKitchen
@@ -79,9 +100,19 @@ class ItalianKitchen : IKitchen
             _ => new Lasagna()
         };
     }
+
+    public string GetMealDrink()
+    {
+        return "Вино"; // Стандартный напиток для итальянской кухни
+    }
+
+    public string GetAlcoholDrink()
+    {
+        return "Вино"; // Алкогольный напиток для итальянской кухни
+    }
 }
 
-// 3. Factory Method – Вариации блюд
+// 3. Фабричный метод (Factory Method) – Вариации бургеров и пасты
 interface IBurger
 {
     void Cook();
@@ -89,17 +120,29 @@ interface IBurger
 
 class Cheeseburger : IBurger
 {
-    public void Cook() => Console.WriteLine("Готовится чизбургер...");
+    public void Cook()
+    {
+        Console.WriteLine("Готовится чизбургер...");
+        Console.WriteLine("Подаётся блюдо.");
+    }
 }
 
 class DoubleBurger : IBurger
 {
-    public void Cook() => Console.WriteLine("Готовится дабл бургер...");
+    public void Cook()
+    {
+        Console.WriteLine("Готовится дабл бургер...");
+        Console.WriteLine("Подаётся блюдо.");
+    }
 }
 
 class VeganBurger : IBurger
 {
-    public void Cook() => Console.WriteLine("Готовится веган бургер...");
+    public void Cook()
+    {
+        Console.WriteLine("Готовится веган бургер...");
+        Console.WriteLine("Подаётся блюдо.");
+    }
 }
 
 interface IPasta
@@ -109,45 +152,67 @@ interface IPasta
 
 class Carbonara : IPasta
 {
-    public void Cook() => Console.WriteLine("Готовится паста Карбонара...");
+    public void Cook()
+    {
+        Console.WriteLine("Готовится паста Карбонара...");
+        Console.WriteLine("Подаётся блюдо.");
+    }
 }
 
 class Fettuccine : IPasta
 {
-    public void Cook() => Console.WriteLine("Готовятся феттучини...");
+    public void Cook()
+    {
+        Console.WriteLine("Готовятся феттучини...");
+        Console.WriteLine("Подаётся блюдо.");
+    }
 }
 
 class Lasagna : IPasta
 {
-    public void Cook() => Console.WriteLine("Готовится лазанья...");
+    public void Cook()
+    {
+        Console.WriteLine("Готовится лазанья...");
+        Console.WriteLine("Подаётся блюдо.");
+    }
 }
 
-// 4. Builder – Комплексный обед
+// 4. Строитель (Builder) – Комплексный обед
 class Meal
 {
-    public string MainCourse { get; private set; }
-    public string Drink { get; private set; }
+    public string MainCourse { get; set; }
+    public string Drink { get; set; }
 
     public void ShowMeal() => Console.WriteLine($"Ваш комплексный обед: {MainCourse} и {Drink}");
 }
 
 class MealBuilder
 {
-    private readonly Meal _meal = new Meal();
+    private readonly Meal _meal;
+
+    public MealBuilder()
+    {
+        _meal = new Meal();
+    }
 
     public MealBuilder AddMainCourse(string main)
     {
-        _meal.GetType().GetProperty("MainCourse").SetValue(_meal, main);
+        _meal.MainCourse = main;
         return this;
     }
 
     public MealBuilder AddDrink(string drink)
     {
-        _meal.GetType().GetProperty("Drink").SetValue(_meal, drink);
+        _meal.Drink = drink;
         return this;
     }
 
     public Meal Build() => _meal;
+
+    public MealBuilder RepeatMeal(Meal meal)
+    {
+        return new MealBuilder().AddMainCourse(meal.MainCourse).AddDrink(meal.Drink);
+    }
 }
 
 // Главная программа
@@ -157,6 +222,8 @@ class Program
     {
         RestaurantAdmin admin = RestaurantAdmin.GetInstance();
         admin.Greet();
+
+        
 
         Console.Write("Сколько сейчас времени (0-23)? ");
         if (!int.TryParse(Console.ReadLine(), out int hour) || hour < 0 || hour > 23)
@@ -171,80 +238,131 @@ class Program
             return;
         }
 
+        // Запрашиваем, пьет ли посетитель алкоголь
+        admin.AskForAlcoholPreference();
+
         bool isAmericanKitchen = admin.IsAmericanKitchen(hour);
-        Console.WriteLine("Проходите, пожалуйста. Сегодня у нас " + admin.GetKitchenType(hour) + ".");
+        Console.WriteLine($"Сейчас у нас {admin.GetKitchenType(hour)}.");
         IKitchen kitchen = isAmericanKitchen ? new AmericanKitchen() : new ItalianKitchen();
 
-        Console.WriteLine("Что закажете?");
-        if (isAmericanKitchen)
+        // Спрашиваем количество людей
+        Console.Write("Сколько человек будет за столом? ");
+        if (!int.TryParse(Console.ReadLine(), out int peopleCount) || peopleCount < 1)
         {
-            Console.WriteLine("1 - Бургер");
-            Console.WriteLine("2 - Комплексный обед (бургер + кола)");
-        }
-        else
-        {
-            Console.WriteLine("1 - Пасту");
-            Console.WriteLine("2 - Комплексный обед (паста + напиток)");
+            Console.WriteLine("Неверное количество людей.");
+            return;
         }
 
-        string choice = Console.ReadLine();
+        // Массив для хранения заказов
+        Meal[] orders = new Meal[peopleCount];
+        Meal? previousOrder = null;
 
-        if (isAmericanKitchen)
+        for (int i = 0; i < peopleCount; i++)
         {
-            switch (choice)
+            Console.WriteLine($"\nЗаказ для {i + 1}-го человека:");
+
+            // Спрашиваем, хотят ли выбрать "мне тоже самое"
+            if (i > 0)
             {
-                case "1":
-                    Console.WriteLine("Выберите бургер:");
-                    Console.WriteLine("1 - Чизбургер");
-                    Console.WriteLine("2 - Дабл бургер");
-                    Console.WriteLine("3 - Веган бургер");
-                    IBurger burger = kitchen.CreateBurger(int.Parse(Console.ReadLine() ?? "1"));
-                    burger?.Cook();
-                    break;
+                Console.Write("Вы хотите выбрать то же самое, что и предыдущий человек? (да/нет): ");
+                string sameAsPrevious = Console.ReadLine().ToLower();
 
-                case "2":
-                    Meal americanMeal = new MealBuilder()
-                        .AddMainCourse("Бургер")
-                        .AddDrink("Кола")
-                        .Build();
-                    americanMeal.ShowMeal();
-                    break;
-
-                default:
-                    Console.WriteLine("Такого варианта нет в меню.");
-                    break;
+                if (sameAsPrevious == "да" && previousOrder != null)
+                {
+                    Console.WriteLine("Вы выбрали тот же заказ.");
+                    orders[i] = previousOrder;
+                    continue;
+                }
             }
-        }
-        else
-        {
-            switch (choice)
+
+            // Показываем меню
+            if (isAmericanKitchen)
             {
-                case "1":
-                    Console.WriteLine("Выберите пасту:");
-                    Console.WriteLine("1 - Карбонара");
-                    Console.WriteLine("2 - Феттучини");
-                    Console.WriteLine("3 - Лазанья");
-                    IPasta pasta = kitchen.CreatePasta(int.Parse(Console.ReadLine() ?? "1"));
-                    pasta?.Cook();
-                    break;
-
-                case "2":
-                    Console.WriteLine("Выберите напиток:");
-                    Console.WriteLine("1 - Вино");
-                    Console.WriteLine("2 - Сок");
-                    string drink = Console.ReadLine() == "1" ? "Вино" : "Сок";
-
-                    Meal italianMeal = new MealBuilder()
-                        .AddMainCourse("Паста")
-                        .AddDrink(drink)
-                        .Build();
-                    italianMeal.ShowMeal();
-                    break;
-
-                default:
-                    Console.WriteLine("Такого варианта нет в меню.");
-                    break;
+                Console.WriteLine("1 - Бургер");
+                Console.WriteLine("2 - Комплексный обед (бургер + кола)");
             }
+            else
+            {
+                Console.WriteLine("1 - Пасту");
+                Console.WriteLine("2 - Комплексный обед (паста + напиток)");
+            }
+
+            string choice = Console.ReadLine();
+            Meal selectedMeal = null;
+
+            if (isAmericanKitchen)
+            {
+                switch (choice)
+                {
+                    case "1":
+                        Console.WriteLine("Выберите бургер:");
+                        Console.WriteLine("1 - Чизбургер");
+                        Console.WriteLine("2 - Дабл бургер");
+                        Console.WriteLine("3 - Веган бургер");
+                        IBurger burger = kitchen.CreateBurger(int.Parse(Console.ReadLine() ?? "1"));
+                        burger?.Cook();
+                        break;
+
+                    case "2":
+                        Console.WriteLine("Выберите бургер для обеда:");
+                        Console.WriteLine("1 - Чизбургер");
+                        Console.WriteLine("2 - Дабл бургер");
+                        Console.WriteLine("3 - Веган бургер");
+                        IBurger selectedBurger = kitchen.CreateBurger(int.Parse(Console.ReadLine() ?? "1"));
+                        selectedMeal = new MealBuilder()
+                            .AddMainCourse($"Бургер ({selectedBurger.GetType().Name})")
+                            .AddDrink(admin.IsAlcoholic ? ((AmericanKitchen)kitchen).GetAlcoholDrink() : kitchen.GetMealDrink())
+                            .Build();
+                        selectedMeal.ShowMeal();
+                        break;
+
+                    default:
+                        Console.WriteLine("Такого варианта нет в меню.");
+                        break;
+                }
+            }
+            else
+            {
+                switch (choice)
+                {
+                    case "1":
+                        Console.WriteLine("Выберите пасту:");
+                        Console.WriteLine("1 - Карбонара");
+                        Console.WriteLine("2 - Феттучини");
+                        Console.WriteLine("3 - Лазанья");
+                        IPasta pasta = kitchen.CreatePasta(int.Parse(Console.ReadLine() ?? "1"));
+                        pasta?.Cook();
+                        break;
+
+                    case "2":
+                        Console.WriteLine("Выберите пасту для обеда:");
+                        Console.WriteLine("1 - Карбонара");
+                        Console.WriteLine("2 - Феттучини");
+                        Console.WriteLine("3 - Лазанья");
+                        IPasta selectedPasta = kitchen.CreatePasta(int.Parse(Console.ReadLine() ?? "1"));
+                        selectedMeal = new MealBuilder()
+                            .AddMainCourse($"Паста ({selectedPasta.GetType().Name})")
+                            .AddDrink(admin.IsAlcoholic ? "Вино" : "Сок")
+                            .Build();
+                        selectedMeal.ShowMeal();
+                        break;
+
+                    default:
+                        Console.WriteLine("Такого варианта нет в меню.");
+                        break;
+                }
+            }
+
+            // Сохраняем заказ для текущего человека
+            orders[i] = selectedMeal;
+            previousOrder = selectedMeal;
+        }
+
+        // Подаем блюда для всех сразу
+        Console.WriteLine("\nВсем заказаны блюда!");
+        foreach (var order in orders)
+        {
+            order?.ShowMeal();
         }
 
         Console.WriteLine("Спасибо за визит! Ждём вас снова.");
